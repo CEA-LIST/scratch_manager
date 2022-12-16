@@ -17,58 +17,75 @@
 # knowledge of the CeCILL-C license and that you accept its terms.
 
 import argparse
+import asyncio
+import collections
+import configparser
 import logging
 import os
-import shlex
 import shutil
 import signal
-import subprocess
 import sys
 import time
+from os import path
 
-
-logger = logging.getLogger('scratch_manager')
-logger.setLevel(logging.INFO)
-
-handler = logging.StreamHandler(sys.stderr)
-handler.setLevel(logging.WARN)
-logger.addHandler(handler)
-
-handler = logging.StreamHandler(sys.stdout)
-handler.setLevel(logging.DEBUG)
-logger.addHandler(handler)
-
-stats = {}
-sizes = {}
+# Globals
+logger = logging.getLogger("scratch_manager")
+stats = collections.OrderedDict()
 total_cache_reads = 0
 
 
+class Stat:
+    def __init__(self, window=600, reads=None):
+        self.window = window
+        self.reads = [] if reads is None else [(time.monotonic(), reads)]
+
+    def __repr__(self) -> str:
+        return f"Stat({self.throughput()}B/s)"
+
+    def throughput(self):
+        if len(self.reads) == 0:
+            return 0
+
+        t1, r1 = self.reads[-1]
+
+        t0, r0 = self.reads[0]
+        for t, r in self.reads:
+            if t < t1 - self.window:
+                t0, r0 = t, r
+
+        # divisor lower bound to discard inaccurate initial readings
+        return (r1 - r0) / max(t1 - t0, self.window / 2)
+
+    def update(self, reads):
+        t1 = time.monotonic()
+
+        self.reads.append((t1, reads))
+
+        before_window = 0
+        for t, _ in self.reads:
+            if t < t1 - self.window:
+                before_window += 1
+
+        self.reads = self.reads[max(0, before_window - 1) :]
+
+
 def goodby(signum, frame):
-    logger.info('Exiting')
+    logger.info("Exiting")
     log_cache_reads(None, None)
     sys.exit(0)
 
 
 def log_cache_reads(signum, frame):
-    logger.info(f"total cache_reads : {(total_cache_reads + sum(s.reads[-1][1] for s in stats.values())) // 1024 ** 3}GB")
+    total = total_cache_reads
+    for _, sc in stats.values():
+        if len(sc.reads) > 0:
+            total += sc.reads[-1][1]
 
-
-def mb(s):
-    return round(s / 1024 ** 2, 2)
-
-
-def gb(s):
-    return round(s / 1024 ** 3)
-
-
-def is_synced(a, b):
-    sta = os.stat(a)
-    stb = os.stat(b)
-    return sta.st_size == stb.st_size and sta.st_ctime == stb.st_ctime
+    logger.info(f"total cache_reads : {total // 1024 ** 3}GB")
 
 
 def knapsack(values, weights, capacity):
-    '''https://gist.github.com/KaiyangZhou/71a473b1561e0ea64f97d0132fe07736'''
+    """https://gist.github.com/KaiyangZhou/71a473b1561e0ea64f97d0132fe07736"""
     n_items = len(values)
 
     # Normalize
@@ -96,297 +113,403 @@ def knapsack(values, weights, capacity):
             picks.append(i)
             K -= weights[i - 1]
 
-    picks.sort()
     picks = [x - 1 for x in picks]  # change to 0-index
 
     return picks
 
 
-class Stat:
-    def __init__(self, window=600, reads=None):
-        self.window = window
+def diskstats():
+    """Return (backing_file, deleted, reads) for each loop device."""
 
-        self.reads = [] if reads is None else [(time.monotonic(), reads)]
+    out = []
 
-    def throughput(self):
-        if len(self.reads) == 0:
-            return 0
-
-        t1, r1 = self.reads[-1]
-
-        t0, r0 = self.reads[0]
-        for t, r in self.reads:
-            if t < t1 - self.window:
-                t0, r0 = t, r
-
-        # divisor lower bound to discard inaccurate initial readings
-        return (r1 - r0) / max(t1 - t0, self.window / 2)
-
-    def update(self, reads):
-        t1 = time.monotonic()
-
-        self.reads.append((t1, reads))
-
-        before_window = 0
-        for t, _ in self.reads:
-            if t < t1 - self.window:
-                before_window += 1
-
-        self.reads = self.reads[max(0, before_window - 1):]
-
-
-def dataset_name(filename, data_dir, cache_dir):
-    """Parse loopback backing file path.
-
-    Returns a tuple containing:
-      - the dataset name
-      - whether the file is in the cache
-      - whether the file has been deleted.
-    """
-    if filename.endswith(' (deleted)'):
-        filename = filename[:-len(' (deleted)')]
-        deleted = True
-    else:
-        deleted = False
-
-    if filename.endswith('.squashfs'):
-        filename = filename[:-len('.squashfs')]
-    else:
-        return None, None, None
-
-    if os.path.samefile(os.path.dirname(filename), data_dir):
-        return os.path.basename(filename), False, deleted
-    elif os.path.samefile(os.path.dirname(filename), cache_dir):
-        return os.path.basename(filename), True, deleted
-    else:
-        return None, None, None
-
-
-def diskstats(data_dir, cache_dir):
-    """Iterate over mounted images stats.
-
-    Yields tuples containing:
-      - the dataset name
-      - whether is cached
-      - number of bytes read since mounted
-      - whether the backing file has been deleted
-    """
     with open("/proc/diskstats") as f:
         for line in f:
             _, _, dev, _, _, reads, *_ = line.split()
-            reads = int(reads) * 512
 
-            if not os.path.exists(f"/sys/block/{dev}/loop/backing_file"):
+            try:
+                sector_size = (
+                    open(f"/sys/block/{dev}/queue/hw_sector_size").read().strip()
+                )
+            except OSError:
                 continue
 
-            backing_file = open(f"/sys/block/{dev}/loop/backing_file").read().strip()
-            dataset, cached, deleted = dataset_name(backing_file, data_dir, cache_dir)
-            if dataset is None:
+            reads = int(reads) * int(sector_size)
+
+            try:
+                backing_file = (
+                    open(f"/sys/block/{dev}/loop/backing_file").read().strip()
+                )
+                if backing_file.endswith(" (deleted)"):
+                    backing_file = backing_file[:-10]
+                    deleted = True
+                else:
+                    deleted = False
+            except OSError:
                 continue
 
-            yield dataset, cached, reads, deleted
+            out.append((backing_file, deleted, reads))
+
+    return out
 
 
-def run(cmd, log_prefix):
-    """Run a command in a subprocess.
+def mounts(filter_mountpoint=None):
+    """Return (backing_file, deleted, mountpoint) for each mounted loopback file."""
+    out = []
 
-    :arg cmd: the command line
-    :arg log_prefix: a description of the command for logging
-    :return: True if the process exited with code 0, False otherwise
-    """
-    r = subprocess.run(
-        shlex.split(cmd), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    if r.returncode:
-        out = r.stdout.decode().strip('\n')
-        logger.error(f"{log_prefix} failed: {out}")
+    with open("/proc/mounts") as f:
+        for line in f:
+            dev, mountpoint, *_ = line.split()
+
+            if filter_mountpoint is not None and mountpoint != filter_mountpoint:
+                continue
+
+            dev = path.basename(dev)
+
+            try:
+                backing_file = (
+                    open(f"/sys/block/{dev}/loop/backing_file").read().strip()
+                )
+                if backing_file.endswith(" (deleted)"):
+                    backing_file = backing_file[:-10]
+                    deleted = True
+                else:
+                    deleted = False
+            except OSError:
+                continue
+
+            out.append((backing_file, deleted, mountpoint))
+
+    return out
+
+
+async def cmd(command, *args, nolog=False):
+    if not nolog:
+        logger.debug(f"> {command} {' '.join(args)}")
+
+    proc = await asyncio.create_subprocess_exec(
+        command, *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+    )
+    stdout = (await proc.stdout.read()).decode()
+    code = await proc.wait()
+    if code != 0:
+        raise RuntimeError(f"command failed: {command} {' '.join(args)}: {stdout}")
+
+    return stdout
+
+
+async def update_dataset(dataset, data, cache, mnt, should_cache):
+    global total_cache_reads, stats
+
+    data_file = path.abspath(path.join(data, dataset))
+    cache_file = path.abspath(path.join(cache, dataset))
+    mountpoint = path.abspath(path.join(mnt, dataset.split(".")[0]))
+
+    # rmed data file
+    if not path.exists(data_file):
+        logger.info(f"removing {dataset}")
+
+        # umount all
+        for _ in [m for _, _, m in mounts() if m == mountpoint]:
+            await cmd("umount", "-l", mountpoint)
+
+        # rm cache if it exists
+        try:
+            os.remove(cache_file)
+        except OSError:
+            if path.exists(cache_file):
+                raise
+
         return False
-    else:
-        logger.debug(f"{log_prefix} succeeded")
-        return True
+
+    # create mount point
+    if not path.exists(mountpoint):
+        await cmd("mkdir", mountpoint)
+
+    # remove stale cache file
+    if (
+        should_cache
+        and (
+            await cmd(
+                "rsync",
+                "-an",
+                "--out-format='%f'",
+                data_file,
+                cache_file,
+                nolog=True,
+            )
+        )
+        != ""
+        and path.exists(cache_file)
+    ):
+        logger.info(f"removing stale cached {dataset}")
+        os.remove(cache_file)
+
+    # drop from cache
+    if not should_cache and path.exists(cache_file):
+        logger.info(f"dropping {dataset} from cache")
+        try:
+            os.remove(cache_file)
+        except OSError:
+            if path.exists(cache_file):
+                raise
+
+    # clean up spurious or unordered mounts
+    mnt_list = mounts(mountpoint)
+    if len(mnt_list) > 0 and mnt_list[0] != (data_file, False, mountpoint):
+        logger.warning(f"cleaning mount for {dataset}")
+        while len(mounts(mountpoint)) > 0:
+            await cmd("umount", "-l", mountpoint)
+
+        stats[dataset][0].reads.clear()
+
+    mnt_list = mounts(mountpoint)
+    if (
+        should_cache
+        and len(mnt_list) > 1
+        and mnt_list[1] != (cache_file, False, mountpoint)
+    ):
+        logger.warning(f"cleaning mount for cached {dataset}")
+        while len(mounts(mountpoint)) > 1:
+            await cmd("umount", "-l", mountpoint)
+
+        total_cache_reads += stats[dataset][1].reads[-1][1]
+        stats[dataset][1].reads.clear()
+
+    mnt_list = mounts(mountpoint)
+    if not should_cache and len(mnt_list) > 1:
+        logger.warning(f"cleaning mount for {dataset}")
+        while len(mounts(mountpoint)) > 1:
+            await cmd("umount", "-l", mountpoint)
+
+    # mount data file
+    if (data_file, False, mountpoint) not in mounts():
+        logger.info(f"mounting {dataset}")
+        await cmd("mount", data_file, mountpoint)
+
+    # sync and mount cache file
+    if should_cache:
+        if not path.exists(cache_file):
+            logger.info(f"caching {dataset}")
+            await cmd("rsync", "-a", data_file, cache_file)
+
+        if (cache_file, False, mountpoint) not in mounts():
+            logger.info(f"mounting cached {dataset}")
+            await cmd("mount", cache_file, mountpoint)
+
+    return True
 
 
-def loop(data_dir, cache_dir, mnt_dir, cache_capacity, window):
+async def loop(data_dir, cache_dir, mnt_dir, cache_capacity, window):
     """Main program loop"""
-    global total_cache_reads, stats, sizes
-
-    t0 = time.monotonic()
+    global total_cache_reads, stats
+    data_dir = path.abspath(data_dir)
+    cache_dir = path.abspath(cache_dir)
+    mnt_dir = path.abspath(mnt_dir)
+    blacklist = set()
 
     while True:
-        # Update statistics and check for deleted files
-        mounted = set()
-        deleted = set()
-
-        for dataset, cached, reads, deleted_ in diskstats(data_dir, cache_dir):
-            mounted.add((dataset, cached))
-
-            if (dataset, cached) in stats:
-                stats[(dataset, cached)].update(reads)
-            else:
-                stats[(dataset, cached)] = Stat(window, reads)
-
-            if deleted_:
-                deleted.add((dataset, cached))
-
-        # Clean-up after externally deleted files
-        for dataset, cached in deleted:
-            if cached:
-                logger.info(f"backing file for cached {dataset} was deleted")
-
-                # Umount dataset
-                ok = run(f"umount -l {os.path.join(mnt_dir, dataset)}", f"unmounting cached {dataset}")
-                if ok:
-                    mounted.remove((dataset, True))
-                    s = stats.pop((dataset, True))
-                    total_cache_reads += s.reads[-1][1]
-                    logger.info("total cache_reads : {total_cache_reads // 1024 ** 3}GB")
-
-            else:
-                logger.info(f"{dataset} was deleted")
-
-                if (dataset, True) in mounted:
-                    # Umount cached dataset first
-                    ok = run(f"umount -l {os.path.join(mnt_dir, dataset)}", f"unmounting cached {dataset}")
-
-                    if ok:
-                        mounted.remove((dataset, True))
-                        stats.pop((dataset, True))
-                        _, reads, _ = stats.pop((dataset, True))
-                        total_cache_reads += reads
-                        logger.info("total cache_reads : {total_cache_reads // 1024 ** 3}GB")
-
-                        # Remove cached dataset file
-                        if os.path.exists(os.path.join(cache_dir, dataset + ".squashfs")):
-                            run(f"rm {os.path.join(cache_dir, dataset)}.squashfs", f"removing cached {dataset}")
-
-                        # Umount dataset
-                        ok = run(f"umount -l {os.path.join(mnt_dir, dataset)}", f"unmounting {dataset}")
-                        if ok:
-                            mounted.remove((dataset, False))
-                            stats.pop((dataset, False))
-
-                else:  # Umount dataset directly
-                    ok = run(f"umount -l {os.path.join(mnt_dir, dataset)}", f"unmounting {dataset}")
-                    if ok:
-                        mounted.remove((dataset, False))
-                        stats.pop((dataset, False))
-
-        assert set(stats.keys()) == mounted
-
-        # Unmount if cache file was somehow mounted without the original
-        for dataset, cached in mounted.copy():
-            if cached and ((dataset, False) not in mounted):
-                logger.warn(f"dropping cached version of deleted {dataset}")
-
-                ok = run(f"umount -l {os.path.join(mnt_dir, dataset)}", f"unmounting cached {dataset}")
-                if ok:
-                    mounted.remove((dataset, True))
-                    s = stats.pop((dataset, True))
-                    total_cache_reads += s.reads[-1][1]
-                    logger.info("total cache_reads : {total_cache_reads // 1024 ** 3}GB")
-
-        # Mount new datasets
-        for dataset in os.listdir(data_dir):
-            if not dataset.endswith(".squashfs"):
-                continue
-
-            dataset = dataset[:-len(".squashfs")]
-
-            if (dataset, False) not in mounted:
-                logger.info(f"new dataset: {dataset}")
-
-                os.makedirs(os.path.join(mnt_dir, dataset), exist_ok=True)
-                ok = run(f"mount {os.path.join(data_dir, dataset)}.squashfs {os.path.join(mnt_dir, dataset)}", f"mounting {dataset}")
-                if ok:
-                    mounted.add((dataset, False))
-                    stats[(dataset, False)] = Stat(window)
-
-        # Optimize mounts
-        throughputs = {}
-        for (d, c), s in stats.items():
-            throughputs[d] = throughputs.get(d, 0) + s.throughput() + c * 1024 ** 2
-
-        throughputs = list(throughputs.items())
-        datasets, throughputs = [d for d, _ in throughputs], [t for _, t in throughputs]
-
-        sizes = [os.stat(os.path.join(data_dir, d + ".squashfs")).st_size for d in datasets]
-
-        to_cache = [datasets[i] for i in knapsack(throughputs, sizes, cache_capacity)]
-
-        # unmount discarded cached datasets
-        for d, c in list(stats.keys()):
-            if c and d not in to_cache:
-                logger.info(f"dropping {d} from cache")
-
-                ok = run(f"umount -l {os.path.join(mnt_dir, d)}", f"unmounting {d}")
-                if ok:
-                    mounted.remove((d, True))
-                    s = stats.pop((d, True))
-                    total_cache_reads += s.reads[-1][1]
-                    logger.info("total cache_reads : {total_cache_reads // 1024 ** 3}GB")
-
-        # remove deprecated cached images (or any garbage file liying around)
-        for f in os.listdir(cache_dir):
-            d = f[:-len(".squashfs")]
-            if (d, True) not in mounted:
-                run(f"rm {os.path.join(cache_dir, f)}", f"removing cached {d}")
-
-        # cache and mount
-        for d in to_cache:
-            if (d, True) in mounted:
-                continue
-
-            if stats[(d, False)].throughput() < 2 * 1024 ** 2:
-                continue
-
-            logger.info(f"adding {d} to cache ({stats[(d, False)].throughput() / 1024 ** 2:.0f}MB/s)")
-
-            ok = run(f"rsync {os.path.join(data_dir, d )}.squashfs {os.path.join(cache_dir, d)}.squashfs", f"transfering {d}")
-            if ok:
-                run(f"mount {os.path.join(cache_dir, d)}.squashfs {os.path.join(mnt_dir, d)}", f"mounting cached {d}")
-                mounted.add((d, True))
-                stats[(d, True)] = Stat(window)
-
-        if set(stats.keys()) != mounted:
-            raise RuntimeError()
-
-        time.sleep(max(0, t0 + 5 - time.monotonic()))
         t0 = time.monotonic()
+
+        cached = set()
+
+        # list datasets
+        datasets = [d for d in os.listdir(data_dir) if d not in blacklist]
+
+        for d in datasets:
+            if d not in stats:
+                logger.info(f"new dataset: {d}")
+                stats[d] = Stat(window=window), Stat(window=window)
+
+        # update stats
+        for backing_file, _, reads in diskstats():
+            prefix = path.dirname(backing_file)
+            d = path.basename(backing_file)
+
+            if d in datasets and prefix == data_dir:
+                stats[d][0].update(reads)
+
+            elif d in datasets and prefix == cache_dir:
+                stats[d][1].update(reads)
+                cached.add(d)
+
+        # clean up spurious cached files
+        for f in os.listdir(cache_dir):
+            if f not in datasets:
+                try:
+                    await cmd("rm", "-rf", path.join(cache_dir, f))
+                except RuntimeError as e:
+                    if path.exists(path.join(cache_dir, f)):
+                        logger.error(f"failed to remove spurious cache files: {e}")
+                        logger.error("exiting")
+                        sys.exit(1)
+
+        # clean up left-over mounts
+        mount_names = {path.join(mnt_dir, d.split(".")[0]) for d in datasets}
+        for backing_file, deleted, mountpoint in mounts()[::-1]:
+            if (
+                path.commonprefix([mountpoint, mnt_dir]) == mnt_dir
+                and mountpoint not in mount_names
+            ):
+                try:
+                    logger.info(f"cleaning up leftover mount {mountpoint}")
+                    await cmd("umount", "-l", mountpoint)
+                except RuntimeError as e:
+                    if (backing_file, deleted, mountpoint) in mounts():
+                        logger.error(f"failed to remove spurious mount: {e}")
+                        logger.error("exiting")
+                        sys.exit(1)
+
+        # update cache list
+        throughputs = [s[0].throughput() + s[1].throughput() for s in stats.values()]
+
+        try:
+            sizes = [
+                os.stat(path.join(data_dir, d)).st_size if d in d in datasets else 0
+                for d in stats.keys()
+            ]
+        except OSError:  # dataset deleted since listdir?
+            await asyncio.sleep(max(0, 5 - time.monotonic() + t0))
+            continue
+
+        cached = os.listdir(cache_dir)
+        for i, d in enumerate(stats.keys()):
+            if d in cached:
+                throughputs[i] += 1024**2  # favor already cached dataset
+
+        to_cache = knapsack(throughputs, sizes, cache_capacity)
+        to_cache = [i in to_cache for i in range(len(datasets))]
+
+        # update datasets
+        update_coroutines = [
+            update_dataset(d, data_dir, cache_dir, mnt_dir, c)
+            for d, c in zip(stats.keys(), to_cache)
+        ]
+
+        updates = await asyncio.gather(*update_coroutines, return_exceptions=True)
+        for d, u in zip(list(stats.keys()), updates):
+            if isinstance(u, Exception):
+                blacklist.add(d)
+                logger.error(f"{u}")
+                logger.error(f"blacklisting {d}")
+                _, sc = stats.pop(d)
+                if len(sc.reads) > 0:
+                    total_cache_reads += sc.reads[-1][1]
+            elif not u:
+                logger.info(f"removed {d}")
+                _, sc = stats.pop(d)
+                if len(sc.reads) > 0:
+                    total_cache_reads += sc.reads[-1][1]
+
+        # pause before looping
+        await asyncio.sleep(max(0, 5 - time.monotonic() + t0))
 
 
 def main():
-    argparser = argparse.ArgumentParser(description="""
-        This script will do the following:
-        1- Monitor datasets stored as image files (squashfs) in datadir and mounted in mountdir.
-        2- Move datasets images with high read thoughput to cachedir and mount them over the existing mountpoint.
-        3- Unmount and drop inactive cached datasets.
-""")
-    argparser.add_argument('--datadir', help='directory where dataset images are stored')
-    argparser.add_argument('--cachedir', help='cache directory where dataset images are mirrored')
-    argparser.add_argument('--mountdir', help='mount directory where dataset images are mounted')
-    argparser.add_argument('--capacity', help='cache capacity in GB, TB or %')
-    argparser.add_argument('--period', type=int, default=1200, help='cache content update period')
-    argparser.add_argument('--verbose', '-v', action='store_true', help='verbose logger')
+    argparser = argparse.ArgumentParser(
+        description="Mount, monitor and cache datasets stored as disk images."
+    )
+    argparser.add_argument("--config", "-c", help="configuration file")
+    argparser.add_argument(
+        "--datadir", help="directory where dataset images are stored"
+    )
+    argparser.add_argument(
+        "--cachedir",
+        help="cache directory where dataset images are mirrored",
+    )
+    argparser.add_argument(
+        "--mountdir",
+        help="mount directory where dataset images are mounted",
+    )
+    argparser.add_argument("--capacity", help="cache capacity in MB, GB, TB or %")
+    argparser.add_argument(
+        "--period", type=int, default=1200, help="cache content update period"
+    )
+    argparser.add_argument(
+        "--verbose", "-v", action="store_true", help="verbose logger"
+    )
     args = argparser.parse_args()
+
+    # Logging
+    logger.setLevel(logging.INFO)
+
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setLevel(logging.WARNING)
+    logger.addHandler(handler)
+
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.DEBUG)
+    handler.addFilter(lambda record: record.levelno <= logging.INFO)
+    logger.addHandler(handler)
 
     if args.verbose:
         logger.setLevel(logging.DEBUG)
         logger.debug("loglevel set to debug")
 
-    if args.capacity.endswith("GB"):
-        args.capacity = int(args.capacity[:-2]) * 1024 ** 3
-    elif args.capacity.endswith("TB"):
-        args.capacity = int(args.capacity[:-2]) * 1024 ** 4
-    elif args.capacity.endswith("%"):
-        args.capacity = int(args.capacity[:-1]) * shutil.disk_usage(args.cachedir).total // 100
+    # Config
+    if args.config is not None:
+        if (
+            args.datadir is not None
+            or args.cachedir is not None
+            or args.mountdir is not None
+            or args.capacity is not None
+        ):
+            logger.error("arguments cannot be used when using config file")
+
+        config = configparser.ConfigParser(interpolation=None)
+        try:
+            with open(args.config) as f:
+                config.read_string("[config]\n" + f.read())
+        except FileNotFoundError:
+            logger.error("config file {args.config} does not exist")
+            sys.exit(1)
+
+        try:
+            datadir = config.get("config", "datadir")
+            cachedir = config.get("config", "cachedir")
+            mountdir = config.get("config", "mountdir")
+            capacity = config.get("config", "capacity")
+            period = config.getint("config", "period", fallback=1200)
+        except KeyError:
+            logger.error("missing config value")
+            sys.exit(1)
+
     else:
-        logger.info("assuming capacity unit is GB")
-        args.capacity = int(args.capacity) * 1024 ** 3
+        if (
+            args.datadir is None
+            or args.cachedir is None
+            or args.mountdir is None
+            or args.capacity is None
+        ):
+            logger.error("either --config or other arguments must be provided")
+            argparser.error()
+
+        datadir = args.datadir
+        cachedir = args.cachedir
+        mountdir = args.mountdir
+        capacity = args.capacity
+        period = args.period
+
+    if capacity.lower().endswith("mb"):
+        capacity = int(capacity[:-2]) * 1024**2
+    elif capacity.lower().endswith("gb"):
+        capacity = int(capacity[:-2]) * 1024**3
+    elif capacity.lower().endswith("tb"):
+        capacity = int(capacity[:-2]) * 1024**4
+    elif capacity.endswith("%"):
+        capacity = int(capacity[:-1]) * shutil.disk_usage(cachedir).total // 100
+    else:
+        logger.error("failed to parse capacity")
+        argparser.error()
 
     signal.signal(signal.SIGTERM, goodby)
     signal.signal(signal.SIGUSR1, log_cache_reads)
 
-    loop(args.datadir, args.cachedir, args.mountdir, args.capacity, args.period)
+    try:
+        sys.exit(asyncio.run(loop(datadir, cachedir, mountdir, capacity, period)))
+    except KeyboardInterrupt:
+        pass
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

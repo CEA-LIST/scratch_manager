@@ -1,12 +1,12 @@
 [Unit]
 Description=Dataset caching daemon
-After=network.target
-Requires=home.mount
+#Requires=home.mount
+#After=home.mount
 StartLimitIntervalSec=0
 
 [Service]
 Type=simple
-ExecStart=/home/softs/squashfs/scratch_manager.py --datadir=@datadir@ --cachedir=@cachedir@ --mountdir=@cachedir@  --capacity=25%  --period=600
+ExecStart=/usr/local/bin/scratch_manager --config /etc/scratch_manager.conf
 
 [Install]
 WantedBy=multi-user.target
