@@ -1,0 +1,9 @@
+Package: scratch-manager
+Version:
+Section: misc
+Priority: optional
+Architecture: all
+Depends: python3 (>=3.7)
+Maintainer: Nicolas Granger <nicolas.granger@cea.fr>
+Description: scratch manager
+ A daemon to automate caching of read-only datasets.
