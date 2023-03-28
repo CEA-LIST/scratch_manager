@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # (C) Copyright 2022 CEA LIST. All Rights Reserved.
 # Contributor(s): Nicolas Granger <nicolas.granger@cea.fr>
 #
@@ -244,6 +242,7 @@ async def update_dataset(dataset, data, cache, mnt, should_cache):
     ):
         logger.info(f"removing stale cached {dataset}")
         os.remove(cache_file)
+        should_cache = False  # abandon caching for this update
 
     # drop from cache
     if not should_cache and path.exists(cache_file):
@@ -405,11 +404,15 @@ async def loop(data_dir, cache_dir, mnt_dir, cache_capacity, window):
         await asyncio.sleep(max(0, 5 - time.monotonic() + t0))
 
 
-def main():
+def run_daemon():
     argparser = argparse.ArgumentParser(
         description="Mount, monitor and cache datasets stored as disk images."
     )
-    argparser.add_argument("--config", "-c", help="configuration file")
+    argparser.add_argument(
+        "--config", "-c",
+        default="/etc/scratch_manager.conf",
+        help="configuration file"
+    )
     argparser.add_argument(
         "--datadir", help="directory where dataset images are stored"
     )
@@ -461,7 +464,7 @@ def main():
             with open(args.config) as f:
                 config.read_string("[config]\n" + f.read())
         except FileNotFoundError:
-            logger.error("config file {args.config} does not exist")
+            logger.error(f"config file {args.config} does not exist")
             sys.exit(1)
 
         try:
@@ -509,7 +512,3 @@ def main():
         sys.exit(asyncio.run(loop(datadir, cachedir, mountdir, capacity, period)))
     except KeyboardInterrupt:
         pass
-
-
-if __name__ == "__main__":
-    main()

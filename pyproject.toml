@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scratch_manager"
+authors = [{ name = "Nicolas Granger", email = "nicolas.granger@cea.fr" }]
+description = "A dataset caching daemon for HPC/AI clusters"
+readme = "README.md"
+license = { text = "CECILL-C" }
+requires-python = ">=3.7"
+classifiers = [
+    "License :: CeCILL-C Free Software License Agreement (CECILL-C)",
+    "Development Status :: 4 - Beta",
+    "Topic :: Scientific/Engineering",
+    "Topic :: System :: Clustering",
+    "Topic :: System :: Distributed Computing"
+]
+dynamic = ["version"]
+
+[project.urls]
+repository = "https://github.com/CEA-LIST/scratch_manager"
+documentation = "https://cea-list.github.io/scratch_manager"
+
+[project.scripts]
+scratch_manager = "scratch_manager:run_daemon"
+
+[tool.setuptools]
+packages = ["scratch_manager"]
+
+[tool.setuptools_scm]
+local_scheme = "no-local-version"

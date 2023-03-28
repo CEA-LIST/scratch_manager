@@ -1,12 +1,9 @@
 [Unit]
 Description=Dataset caching daemon
-#Requires=home.mount
-#After=home.mount
-StartLimitIntervalSec=0
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/scratch_manager --config /etc/scratch_manager.conf
+ExecStart=/usr/bin/scratch_manager --config /etc/scratch_manager.conf
 
 [Install]
 WantedBy=multi-user.target
