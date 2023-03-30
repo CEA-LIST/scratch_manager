@@ -1,0 +1,417 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<meta content="dYDeEB1C_v5wqiUX9ZdWTK7bCfGizdeCaYSqHAZkwQk" name="google-site-verification" />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" />
+
+    <!-- Generated with Sphinx 6.1.3 and Furo 2023.03.27 -->
+        <title>Scratch manager documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-half" viewBox="0 0 24 24">
+    <title>Auto light/dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M13 12h5" />
+      <path d="M13 15h4" />
+      <path d="M13 18h1" />
+      <path d="M13 9h4" />
+      <path d="M13 6h1" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="#"><div class="brand">Scratch manager documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="#">
+  
+  
+  <span class="sidebar-brand-text">Scratch manager documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Project Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/CEA-LIST/scratch_manager">GitHub</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main">
+          <section id="scratch-manager">
+<h1>Scratch manager<a class="headerlink" href="#scratch-manager" title="Permalink to this heading">#</a></h1>
+<p>Scratch manager is a daemon which automates caching for read only dataset on a system configuration with a slow and a fast storage device.
+In a typical HPC environement, the slow storage is a shared network filesystem and the fast one is an ssd drive on the compute node.
+The scratch manager monitors read throughput on a list of dataset stored on the large but slow storage and moves the most active ones to a faster but limited cache storage.
+The current implementation uses squashfs images to bundle together the files from each dataset.
+This provide the following advantages:</p>
+<ul class="simple">
+<li><p>Large datasets with many small files are bundled into one container file on the underlying storage.</p></li>
+<li><p>The cache is shared across users and jobs</p></li>
+<li><p>Once mounted, dataset content is accessible via the familar posix filesystem api.</p></li>
+<li><p>Cached images are mounted over the mountpoint of the non-cached version.
+Caching happens live and transparently for users, even if files are currently open.</p></li>
+<li><p>The daemon relies on readily available linux io statistics and does not require dependencies other than python 3.</p></li>
+</ul>
+<section id="principle">
+<h2>Principle<a class="headerlink" href="#principle" title="Permalink to this heading">#</a></h2>
+<p>The general logic of the code is an infinite loop of the following steps:</p>
+<ol class="arabic simple">
+<li><p>Check and handle added and deleted datasets</p></li>
+<li><p>Update throughput statistics</p></li>
+<li><p>Compute the optimal combination of dataset to cache or drop</p></li>
+<li><p>Unmount and delete datasets to drop from cache</p></li>
+<li><p>Copy and mount dataset to cache</p></li>
+</ol>
+<p><img alt="scratch manager schema" src="_images/scratch_manager.svg" /></p>
+</section>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">#</a></h2>
+<p>Clone the repository and move into it:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/CEA-LIST/scratch_manager.git
+<span class="nb">cd</span><span class="w"> </span>scratch_manager
+</pre></div>
+</div>
+<p>Build and install the package for RPM-based distributions:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># Install build dependencies</span>
+sudo<span class="w"> </span>dnf<span class="w"> </span>install<span class="w"> </span>git<span class="w"> </span>python3-rpm-macros<span class="w"> </span>python3-wheel<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>python3-setuptools<span class="w"> </span>python3-setuptools_scm<span class="w"> </span>dnf-utils<span class="w"> </span>rpmdevtools
+
+<span class="c1"># Generate rpm package</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span>rpmbuild/<span class="o">{</span>BUILD,RPMS,SOURCES,SPECS,SRPMS<span class="o">}</span>
+sed<span class="w"> </span><span class="s2">&quot;s/Version:.*/Version:        </span><span class="k">$(</span>python3<span class="w"> </span>-m<span class="w"> </span>setuptools_scm<span class="k">)</span><span class="s2">/g&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>packaging/scratch_manager.spec<span class="w"> </span>&gt;<span class="w"> </span>rpmbuild/SPECS/scratch_manager.spec
+python3<span class="w"> </span>setup.py<span class="w"> </span>sdist<span class="w"> </span>--dist-dir<span class="w"> </span>rpmbuild/SOURCES
+rpmbuild<span class="w"> </span>--define<span class="w"> </span><span class="s2">&quot;_topdir </span><span class="nv">$PWD</span><span class="s2">/rpmbuild&quot;</span><span class="w"> </span>-bb<span class="w"> </span>rpmbuild/SPECS/scratch_manager.spec
+
+<span class="c1"># Remove build dependencies if desired</span>
+<span class="c1"># sudo dnf remove git python3-rpm-macros python3-wheel \</span>
+<span class="c1">#     python3-setuptools python3-setuptools_scm dnf-utils rpmdevtools</span>
+
+<span class="c1"># Install package</span>
+sudo<span class="w"> </span>dnf<span class="w"> </span>install<span class="w"> </span>rpmbuild/RPMS/noarch/*.rpm
+</pre></div>
+</div>
+<p>Build and install the package for DEB-based distributions:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="c1"># Install build dependencies</span>
+sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>git<span class="w"> </span>python3-setuptools-scm<span class="w"> </span>python3-pip
+
+<span class="c1"># Generate deb package</span>
+python3<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-U<span class="w"> </span>virtualenv<span class="w"> </span>build<span class="w"> </span>installer
+python3<span class="w"> </span>-m<span class="w"> </span>build<span class="w"> </span>--wheel
+python3<span class="w"> </span>-m<span class="w"> </span>installer<span class="w"> </span>dist/*.whl<span class="w"> </span>--prefix<span class="o">=</span>/usr<span class="w"> </span>--destdir<span class="o">=</span>debroot
+mkdir<span class="w"> </span>-p<span class="w"> </span>debroot/DEBIAN
+sed<span class="w"> </span><span class="s2">&quot;s/Version:.*/Version: </span><span class="k">$(</span>python3<span class="w"> </span>-m<span class="w"> </span>setuptools_scm<span class="k">)</span><span class="s2">-1/g&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>packaging/control<span class="w"> </span>&gt;<span class="w"> </span>debroot/DEBIAN/control
+install<span class="w"> </span>-o<span class="w"> </span>root<span class="w"> </span>-m<span class="w"> </span><span class="m">0644</span><span class="w"> </span>-D<span class="w"> </span>scratch_manager.service<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>debroot/usr/lib/systemd/system/scratch_manager.service
+dpkg-deb<span class="w"> </span>--root-owner-group<span class="w"> </span>--build<span class="w"> </span>debroot/<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>scratch-manager_<span class="k">$(</span>python3<span class="w"> </span>-m<span class="w"> </span>setuptools_scm<span class="k">)</span>-1_all.deb
+
+<span class="c1"># Remove build dependencies if desired</span>
+<span class="c1"># sudo apt autoremove -y git python3-setuptools-scm python3-pip</span>
+
+<span class="c1"># Install package</span>
+sudo<span class="w"> </span>dpkg<span class="w"> </span>-i<span class="w"> </span>scratch-manager_*.deb
+</pre></div>
+</div>
+<p>Edit the <code class="docutils literal notranslate"><span class="pre">/etc/scratch_manager.conf</span></code> and set the daemon configuration:</p>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="c1">; Directory containing squashfs image files.</span>
+<span class="na">datadir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">/data/scratch_manager</span>
+
+<span class="c1">; Directory to use for caching image files.</span>
+<span class="na">cachedir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">/scratch/scratch_manager</span>
+
+<span class="c1">; Directory in under which dataset image files will be mounted, the</span>
+<span class="c1">; daemon will create a subdirectory for each image.</span>
+<span class="na">mountdir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">/media</span>
+
+<span class="c1">; Maximum allowed cache utilisation (specify the unit from &#39;GB&#39;, &#39;TB&#39; or &#39;%&#39;).</span>
+<span class="na">capacity</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">25%</span>
+
+<span class="c1">; Sliding window in seconds over which to aggregate throughput stats.</span>
+<span class="na">period</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">600</span>
+</pre></div>
+</div>
+<p>Ensure the daemon starts after the filesystems it depends on:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>systemctl<span class="w"> </span>edit<span class="w"> </span>scratch_manager.service
+</pre></div>
+</div>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="k">[Unit]</span>
+<span class="na">Requires</span><span class="o">=</span><span class="s">home.mount</span>
+<span class="na">After</span><span class="o">=</span><span class="s">home.mount</span>
+</pre></div>
+</div>
+<p>Enable and start the daemon:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>systemctl<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>--now<span class="w"> </span>scratch_manager.service
+</pre></div>
+</div>
+</section>
+<section id="adding-datasets">
+<h2>Adding datasets<a class="headerlink" href="#adding-datasets" title="Permalink to this heading">#</a></h2>
+<p>You can generate an mksquashfs image from the content of a directory using the <a class="reference external" href="https://manpages.debian.org/testing/squashfs-tools/mksquashfs.1.en.html">mksquashfs</a> command.</p>
+<p>Before generating the image, make sure the permissions are correct, for example with:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>find<span class="w"> </span>.<span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span>-exec<span class="w"> </span>chmod<span class="w"> </span><span class="m">0755</span><span class="w"> </span><span class="o">{}</span><span class="w"> </span><span class="se">\;</span>
+find<span class="w"> </span>.<span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-exec<span class="w"> </span>chmod<span class="w"> </span><span class="m">0644</span><span class="w"> </span><span class="o">{}</span><span class="w"> </span><span class="se">\;</span>
+</pre></div>
+</div>
+<p>Then generate the archive file</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>mksquashfs<span class="w"> </span>.<span class="w"> </span>../dataset_name.squashfs
+</pre></div>
+</div>
+<p>The following arguments for mksquashfs might be relevant in most situations:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">-all-root</span></code>: set owner and group of all files to root</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-progress</span> <span class="pre">-info</span></code>: show progress bar</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-comp</span> <span class="pre">lzo</span> <span class="pre">-noD</span> <span class="pre">-noF</span></code>: disable compression of data blocks and fragments and use lzo compression elsewhere</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-no-duplicates</span></code>: don’t try to detect and deduplicate files</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-no-xattrs</span></code>: disable support for extended attributes</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-no-exports</span></code>: disable support for the image being re-exported via nfs</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-no-sparse</span></code>: don’t try to detect and optimize sparse files</p></li>
+</ul>
+<p>Once the image is ready, move it inside the directory specified by <code class="docutils literal notranslate"><span class="pre">--datadir</span></code>, it should be detected and mounted by the daemon automatically.
+Make sure the image file is already on the same filesystem so that the move is atomic.
+Otherwise, the daemon might try and fail to mount the image while it is being transfered.</p>
+</section>
+<section id="removing-a-dataset">
+<h2>Removing a dataset<a class="headerlink" href="#removing-a-dataset" title="Permalink to this heading">#</a></h2>
+<p>Simply remove the dataset image from the datadir, the daemon will detect it and clean up the caches and mount points.</p>
+</section>
+<section id="license">
+<h2>License<a class="headerlink" href="#license" title="Permalink to this heading">#</a></h2>
+<p>This program is distributed under the CeCILL-C license.</p>
+</section>
+<section id="known-issues">
+<h2>Known issues<a class="headerlink" href="#known-issues" title="Permalink to this heading">#</a></h2>
+<ul class="simple">
+<li><p>Older linux kernel versions do not record io stats for disk images, so caching will not work.</p></li>
+<li><p>The daemon leaves inactive images in cache so long as they do not exceed the capacity allowed.
+This reduces the available free space available for other programs.
+It is safe to manually delete cached images but the daemon will reallocate the free space anyway.</p></li>
+<li><p>Pinning a dataset to cache is not yet implemented.</p></li>
+<li><p>It may take a little while until a non-cached dataset gets selected for caching, transfered and mounted.
+During that time, data will be read from the image stored on the slow storage.</p></li>
+<li><p>The daemon is currently single threaded.
+It will hang while dataset images are being transfered.</p></li>
+<li><p>Packaging is borken on ubuntu (https://github.com/pypa/installer/issues/176)</p></li>
+</ul>
+</section>
+</section>
+<div class="toctree-wrapper compound">
+</div>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2023, Nicolas Granger
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Scratch manager</a><ul>
+<li><a class="reference internal" href="#principle">Principle</a></li>
+<li><a class="reference internal" href="#installation">Installation</a></li>
+<li><a class="reference internal" href="#adding-datasets">Adding datasets</a></li>
+<li><a class="reference internal" href="#removing-a-dataset">Removing a dataset</a></li>
+<li><a class="reference internal" href="#license">License</a></li>
+<li><a class="reference internal" href="#known-issues">Known issues</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/scripts/furo.js"></script>
+    </body>
+</html>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+  <ShortName>Scratch manager</ShortName>
+  <Description>Search Scratch manager documentation</Description>
+  <InputEncoding>utf-8</InputEncoding>
+  <Url type="text/html" method="get"
+       template="https://cea-list.github.io/scratch_manager//search.html?q={searchTerms}"/>
+  <LongName>Scratch manager documentation</LongName>
+  
+</OpenSearchDescription>
